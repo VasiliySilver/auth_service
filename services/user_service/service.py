@@ -1,7 +1,7 @@
 # shared/services/user_service.py
 from shared.db.repositories.user_repository import UserRepository
 from shared.db.models import User
-from shared.db.schemas.user import UserCreate, UserUpdate
+from shared.db.schemas.user import UserCreate, UserUpdate, UserUpdateInDB
 from shared.core.security import auth
 
 class UserService:
@@ -20,20 +20,11 @@ class UserService:
         return await self.user_repository.get_by_id(user_id)
 
     async def update_user(self, user_id: int, user_data: UserUpdate) -> User | None:
-        user = await self.user_repository.get_by_id(user_id)
-        if user:
-            for field, value in user_data.dict(exclude_unset=True).items():
-                setattr(user, field, value)
-            user = await self.user_repository.update(user)
-        return user
+        update_data = UserUpdateInDB(**user_data.model_dump(exclude_unset=True))
+        return await self.user_repository.update(user_id, update_data)
 
     async def delete_user(self, user_id: int) -> bool:
-        user = await self.user_repository.get_by_id(user_id)
-        if user:
-            await self.user_repository.delete(user)
-            return True
-        return False
+        return await self.user_repository.delete(user_id)
 
     async def list_users(self, skip: int = 0, limit: int = 100) -> list[User]:
         return await self.user_repository.list(skip, limit)
-

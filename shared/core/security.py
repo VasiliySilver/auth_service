@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.db.session import get_db
 from shared.db.repositories.user_repository import UserRepository
-from shared.db.models import User
+from shared.db.models import User, UserRole
 from shared.core.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -48,13 +48,13 @@ class Auth:
     async def get_current_user(
         token: str = Depends(oauth2_scheme),
         db: AsyncSession = Depends(get_db)
-    ) -> Optional[User]:
+    ) -> User:
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            username: str = payload.get("sub")
+            username: str = payload.get("sub", None)
             if username is None:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
-        except jwt.PyJWTError:
+                raise ValueError("Missing username in token")
+        except (jwt.PyJWTError, ValueError):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
         
         user_repo = UserRepository(db)
@@ -64,18 +64,38 @@ class Auth:
         return user
 
     @staticmethod
-    async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
-        if not current_user.is_active:
+    async def get_current_active_user(
+        current_user: User = Depends(get_current_user)
+    ) -> User:
+        user = await current_user  # Ожидаем завершения корутины
+        if not user.is_active:
             raise HTTPException(status_code=400, detail="Inactive user")
-        return current_user
+        return user
 
 auth = Auth()
 
-def get_current_user_with_roles(*required_roles: str):
-    async def current_user_with_roles(current_user: User = Depends(auth.get_current_active_user)) -> User:
-        if not required_roles:
-            return current_user
-        if not any(role in current_user.roles for role in required_roles):
-            raise HTTPException(status_code=403, detail="Insufficient permissions")
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_current_user_with_roles(*required_roles: UserRole):
+    async def current_user_with_roles(
+        current_user: User = Depends(auth.get_current_active_user),
+    ) -> User:
+        logger.info(f"Current user: id={current_user.id}, username={current_user.username}, email={current_user.email}")
+        logger.info(f"Current user roles: {current_user.roles}")
+        logger.info(f"Required roles: {required_roles}")
+        
+        # Преобразуем роли пользователя в объекты UserRole
+        user_roles = [UserRole(role) for role in current_user.roles]
+        
+        has_required_role = any(role in user_roles for role in required_roles)
+        logger.info(f"User has required role: {has_required_role}")
+        
+        if not has_required_role:
+            logger.warning("User does not have required roles")
+            raise HTTPException(
+                status_code=403, detail="Not enough permissions"
+            )
         return current_user
     return current_user_with_roles
