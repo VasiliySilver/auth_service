@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from shared.db.models import User
-from shared.db.schemas.user import UserCreateInDB
+from shared.db.schemas.user import UserCreate, UserCreateInDB
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
