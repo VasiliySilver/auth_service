@@ -4,6 +4,7 @@ from shared.db.models import User
 from shared.db.schemas.user import UserCreate, UserUpdate, UserUpdateInDB
 from shared.core.security import auth
 
+
 class UserService:
     def __init__(self, user_repository: UserRepository):
         self.user_repository = user_repository
@@ -12,7 +13,7 @@ class UserService:
         user = User(
             username=user_data.username,
             email=user_data.email,
-            hashed_password=auth.get_password_hash(user_data.password)
+            hashed_password=auth.get_password_hash(user_data.password),
         )
         return await self.user_repository.create(user)
 

@@ -3,16 +3,17 @@ from shared.db.repositories.user_repository import UserRepository
 from shared.db.schemas.user import UserCreateInDB, UserUpdate, UserRole
 from shared.core.security import auth
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
 
 from sqlalchemy import delete
 from shared.db.models import User  # Убедитесь, что путь импорта правильный
+
 
 @pytest.fixture(autouse=True)
 async def clear_users(db_session: AsyncSession):
     async with db_session.begin():
         await db_session.execute(delete(User))
     await db_session.commit()
+
 
 @pytest.mark.asyncio
 async def test_get_current_user(db_session, client):
@@ -23,9 +24,9 @@ async def test_get_current_user(db_session, client):
         username="testuser",
         email="testuser@example.com",
         hashed_password=hashed_password,
-        roles=[UserRole.USER]
+        roles=[UserRole.USER],
     )
-    created_user = await user_repo.create(user_data)
+    await user_repo.create(user_data)
 
     login_data = {"username": "testuser@example.com", "password": password}
     login_response = await client.post("/auth/login", data=login_data)
@@ -39,6 +40,7 @@ async def test_get_current_user(db_session, client):
     assert user["email"] == "testuser@example.com"
     assert user["username"] == "testuser"
     assert user["roles"] == [UserRole.USER]
+
 
 @pytest.mark.asyncio
 async def test_get_user(db_session, client):
@@ -54,9 +56,9 @@ async def test_get_user(db_session, client):
         username="testuser",
         email="testuser@example.com",
         hashed_password=auth.get_password_hash(user_password),
-        roles=[UserRole.USER.value]
+        roles=[UserRole.USER.value],
     )
-    
+
     user = await user_repo.create(user_data)
 
     # Создаем админа
@@ -65,9 +67,9 @@ async def test_get_user(db_session, client):
         username="testadmin",
         email="testadmin@example.com",
         hashed_password=auth.get_password_hash(admin_pass),
-        roles=[UserRole.USER.value, UserRole.ADMIN.value]
+        roles=[UserRole.USER.value, UserRole.ADMIN.value],
     )
-    admin = await user_repo.create(admin_data)
+    await user_repo.create(admin_data)
 
     # Логинимся как админ
     login_data = {"username": "testadmin@example.com", "password": admin_pass}
@@ -84,6 +86,7 @@ async def test_get_user(db_session, client):
     assert response.json()["id"] == user.id
     assert response.json()["username"] == user.username
 
+
 @pytest.mark.asyncio
 async def test_get_all_users(db_session, client):
     # Создаем админа и нескольких пользователей
@@ -92,7 +95,7 @@ async def test_get_all_users(db_session, client):
         username="admin",
         email="admin@example.com",
         hashed_password=auth.get_password_hash("adminpass"),
-        roles=[UserRole.ADMIN.value, UserRole.USER.value]
+        roles=[UserRole.ADMIN.value, UserRole.USER.value],
     )
     await user_repo.create(admin_data)
 
@@ -101,7 +104,7 @@ async def test_get_all_users(db_session, client):
             username=f"user{i}",
             email=f"user{i}@example.com",
             hashed_password=auth.get_password_hash(f"userpass{i}"),
-            roles=[UserRole.USER.value]
+            roles=[UserRole.USER.value],
         )
         await user_repo.create(user_data)
 
@@ -118,7 +121,10 @@ async def test_get_all_users(db_session, client):
     users = response.json()
     assert len(users) == 6  # 5 обычных пользователей + 1 админ
     assert any(user["email"] == "admin@example.com" for user in users)
-    assert all(f"user{i}@example.com" in [user["email"] for user in users] for i in range(5))
+    assert all(
+        f"user{i}@example.com" in [user["email"] for user in users] for i in range(5)
+    )
+
 
 @pytest.mark.asyncio
 async def test_update_user(db_session, client):
@@ -128,14 +134,14 @@ async def test_update_user(db_session, client):
         username="admin",
         email="admin@example.com",
         hashed_password=auth.get_password_hash("adminpass"),
-        roles=["admin"]
+        roles=["admin"],
     )
     await user_repo.create(admin_data)
 
     user_data = UserCreateInDB(
         username="user",
         email="user@example.com",
-        hashed_password=auth.get_password_hash("userpass")
+        hashed_password=auth.get_password_hash("userpass"),
     )
     user = await user_repo.create(user_data)
 
@@ -147,10 +153,13 @@ async def test_update_user(db_session, client):
     # Обновляем пользователя
     headers = {"Authorization": f"Bearer {admin_token}"}
     update_data = UserUpdate(username="updateduser")
-    response = await client.put(f"/api/users/{user.id}", headers=headers, json=update_data.model_dump())
+    response = await client.put(
+        f"/api/users/{user.id}", headers=headers, json=update_data.model_dump()
+    )
     assert response.status_code == 200
     updated_user = response.json()
     assert updated_user["username"] == "updateduser"
+
 
 @pytest.mark.asyncio
 async def test_delete_user(db_session, client):
@@ -160,14 +169,14 @@ async def test_delete_user(db_session, client):
         username="admin",
         email="admin@example.com",
         hashed_password=auth.get_password_hash("adminpass"),
-        roles=["admin"]
+        roles=["admin"],
     )
     await user_repo.create(admin_data)
 
     user_data = UserCreateInDB(
         username="user",
         email="user@example.com",
-        hashed_password=auth.get_password_hash("userpass")
+        hashed_password=auth.get_password_hash("userpass"),
     )
     user = await user_repo.create(user_data)
 

@@ -7,7 +7,9 @@ def get_async_session_local(test_mode=False):
     engine = get_engine(test_mode)
     return sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+
 AsyncSessionLocal = get_async_session_local()
+
 
 async def get_db():
     async with AsyncSessionLocal() as session:
@@ -15,4 +17,3 @@ async def get_db():
             yield session
         finally:
             await session.close()
-

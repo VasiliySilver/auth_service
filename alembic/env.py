@@ -1,3 +1,5 @@
+# ruff: noqa: E402, F401
+
 import sys
 from pathlib import Path
 
@@ -5,7 +7,7 @@ from pathlib import Path
 root_path = Path(__file__).parents[1].resolve()
 sys.path.append(str(root_path))
 
-import asyncio
+import asyncio  # noqa: E402
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -14,7 +16,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-from shared.core.config import settings
+from shared.core.config import settings  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -29,8 +31,9 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from shared.db.models import User
-from shared.db.database import Base
+from shared.db.models import User, UserRole  # noqa: E402
+from shared.db.database import Base  # noqa: E402
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -38,7 +41,6 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-
 
 
 def run_migrations_offline() -> None:

@@ -11,11 +11,13 @@ Base.metadata.create_all(bind=engine)
 # Подключение роутов
 app.include_router(router, prefix="/auth", tags=["auth"])
 
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to Auth Service"}
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
+    uvicorn.run(app, host="0.0.0.0", port=8000)

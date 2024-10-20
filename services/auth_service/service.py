@@ -11,11 +11,11 @@ class AuthService:
         existing_user = await self.user_repository.get_by_email(user.email)
         if existing_user:
             raise ValueError("Unable to register user with provided information")
-        
+
         hashed_password = auth.get_password_hash(user.password)
         new_user = await self.user_repository.create(
             UserCreateInDB(
-                email=user.email, 
+                email=user.email,
                 hashed_password=hashed_password,
                 username=user.username,
             )
@@ -28,4 +28,3 @@ class AuthService:
             return None
         access_token = auth.create_access_token(data={"sub": user.email})
         return {"access_token": access_token, "token_type": "bearer"}
-
