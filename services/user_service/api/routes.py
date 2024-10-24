@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared.db.models import User, UserRole
-from shared.db.schemas.user import UserResponse, UserUpdate
+from shared.db.schemas.user import UserResponse, UserUpdate, UserUpdateFull
 from shared.db.session import get_db
 from services.user_service.service import UserService
 from shared.core.security import get_current_user_with_roles, auth
@@ -42,15 +42,29 @@ async def get_all_users(
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-async def update_user(
+async def update_user_full(
+    user_id: int,
+    user_update: UserUpdateFull,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_with_roles(UserRole.ADMIN)),
+):
+    user_repo = UserRepository(db)
+    user_service = UserService(user_repo)
+    updated_user = await user_service.update_user_full(user_id, user_update)
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return updated_user
+
+
+@router.patch("/{user_id}", response_model=UserResponse)
+async def update_user_partial(
     user_id: int,
     user_update: UserUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_with_roles(UserRole.ADMIN)),
 ):
-    user_repository = UserRepository(db)
-    user_service = UserService(user_repository)
-    updated_user = await user_service.update_user(user_id, user_update)
+    user_service = UserService(UserRepository(db))
+    updated_user = await user_service.update_user_partial(user_id, user_update)
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
     return updated_user

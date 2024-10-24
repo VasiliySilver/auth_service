@@ -1,8 +1,9 @@
 import pytest
 from shared.db.models import User, UserRole
 from shared.db.repositories.user_repository import UserRepository
-from shared.db.schemas.user import UserCreateInDB, UserUpdateInDB
+from shared.db.schemas.user import UserCreateInDB, UserUpdateInDB, UserUpdate
 from sqlalchemy import delete
+from services.user_service.service import UserService
 
 
 @pytest.mark.asyncio
@@ -164,3 +165,36 @@ async def test_user_repository_list(db_session):
     assert len(users) == 3
     assert users[0].username == "listuser1"
     assert users[-1].username == "listuser3"
+
+
+@pytest.mark.asyncio
+async def test_user_service_update(db_session):
+    user_repo = UserRepository(db_session)
+    user_service = UserService(user_repo)
+
+    # Создаем пользователя
+    user_data = UserCreateInDB(
+        username="updateuser",
+        email="updateuser@example.com",
+        hashed_password="hashed_password",
+        roles=[UserRole.USER],
+    )
+    new_user = await user_repo.create(user_data)
+
+    # Обновляем пользователя через UserService
+    update_data = UserUpdateInDB(username="updatedusername")
+    updated_user = await user_service.update_user_partial(new_user.id, update_data)
+
+    assert updated_user is not None
+    assert updated_user.username == "updatedusername"
+    assert (
+        updated_user.email == "updateuser@example.com"
+    )  # Проверяем, что email не изменился
+    assert updated_user.roles == [UserRole.USER.value]  # Проверяем, что роли не изменились
+
+    # Проверяем, что изменения сохранились в базе данных
+    db_user = await user_repo.get_by_id(new_user.id)
+    assert db_user is not None
+    assert db_user.username == "updatedusername"
+    assert db_user.email == "updateuser@example.com"
+    assert db_user.roles == [UserRole.USER.value]

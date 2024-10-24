@@ -10,12 +10,12 @@ class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create(self, user: UserCreateInDB) -> User:
-        existing_user = await self.get_by_email(user.email)
+    async def create(self, user_data: UserCreateInDB) -> User:
+        existing_user = await self.get_by_email(user_data.email)
         if existing_user:
             raise ValueError("User with this email already exists")
 
-        db_user = User(**user.model_dump())
+        db_user = User(**user_data.model_dump())
         self.session.add(db_user)
         await self.session.commit()
         await self.session.refresh(db_user)
@@ -39,12 +39,18 @@ class UserRepository:
         result = await self.session.execute(select(User).offset(skip).limit(limit))
         return list(result.scalars().all())
 
-    async def update(self, user_id: int, user_data: UserUpdateInDB) -> User | None:
+    async def update(
+        self, user_id: int, user_data: UserUpdateInDB, full_update: bool = False
+    ) -> User | None:
         user = await self.get_by_id(user_id)
         if user:
-            update_dict = user_data.model_dump(exclude_unset=True)
-            for key, value in update_dict.items():
-                setattr(user, key, value)
+            if full_update:
+                for key, value in user_data.model_dump(exclude_unset=True).items():
+                    setattr(user, key, value)
+            else:
+                for key, value in user_data.model_dump(exclude_unset=True).items():
+                    if value is not None:
+                        setattr(user, key, value)
             await self.session.commit()
             await self.session.refresh(user)
         return user

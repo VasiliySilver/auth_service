@@ -67,3 +67,10 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserUpdateFull(BaseModel):
+    username: str
+    email: EmailStr
+    is_active: bool
+    roles: List[UserRole]

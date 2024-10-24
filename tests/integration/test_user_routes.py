@@ -1,6 +1,6 @@
 import pytest
 from shared.db.repositories.user_repository import UserRepository
-from shared.db.schemas.user import UserCreateInDB, UserUpdate, UserRole
+from shared.db.schemas.user import UserCreateInDB, UserUpdateFull, UserRole
 from shared.core.security import auth
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,41 +127,6 @@ async def test_get_all_users(db_session, client):
 
 
 @pytest.mark.asyncio
-async def test_update_user(db_session, client):
-    # Создаем админа и пользователя
-    user_repo = UserRepository(db_session)
-    admin_data = UserCreateInDB(
-        username="admin",
-        email="admin@example.com",
-        hashed_password=auth.get_password_hash("adminpass"),
-        roles=["admin"],
-    )
-    await user_repo.create(admin_data)
-
-    user_data = UserCreateInDB(
-        username="user",
-        email="user@example.com",
-        hashed_password=auth.get_password_hash("userpass"),
-    )
-    user = await user_repo.create(user_data)
-
-    # Логинимся как админ
-    login_data = {"username": "admin@example.com", "password": "adminpass"}
-    login_response = await client.post("/auth/login", data=login_data)
-    admin_token = login_response.json()["access_token"]
-
-    # Обновляем пользователя
-    headers = {"Authorization": f"Bearer {admin_token}"}
-    update_data = UserUpdate(username="updateduser")
-    response = await client.put(
-        f"/api/users/{user.id}", headers=headers, json=update_data.model_dump()
-    )
-    assert response.status_code == 200
-    updated_user = response.json()
-    assert updated_user["username"] == "updateduser"
-
-
-@pytest.mark.asyncio
 async def test_delete_user(db_session, client):
     # Создаем админа и пользователя
     user_repo = UserRepository(db_session)
@@ -194,3 +159,89 @@ async def test_delete_user(db_session, client):
     # Проверяем, что пользователь действительно удален
     deleted_user = await user_repo.get_by_id(user.id)
     assert deleted_user is None
+
+
+@pytest.mark.asyncio
+async def test_update_user_partial(db_session, client):
+    # Создаем админа и пользователя
+    user_repo = UserRepository(db_session)
+    admin_data = UserCreateInDB(
+        username="admin",
+        email="admin@example.com",
+        hashed_password=auth.get_password_hash("adminpass"),
+        roles=[UserRole.ADMIN],
+    )
+    await user_repo.create(admin_data)
+
+    user_data = UserCreateInDB(
+        username="user",
+        email="user@example.com",
+        hashed_password=auth.get_password_hash("userpass"),
+        roles=[UserRole.USER],
+    )
+    user = await user_repo.create(user_data)
+
+    # Логинимся как админ
+    login_data = {"username": "admin@example.com", "password": "adminpass"}
+    login_response = await client.post("/auth/login", data=login_data)
+    admin_token = login_response.json()["access_token"]
+
+    # Частично обновляем пользователя
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    update_data = {"username": "updateduser"}
+    response = await client.patch(
+        f"/api/users/{user.id}", headers=headers, json=update_data
+    )
+    assert response.status_code == 200
+    updated_user = response.json()
+    assert updated_user["username"] == "updateduser"
+    assert (
+        updated_user["email"] == "user@example.com"
+    )  # Проверяем, что email не изменился
+    assert updated_user["roles"] == [
+        UserRole.USER.value
+    ]  # Проверяем, что роли не изменились
+
+
+@pytest.mark.asyncio
+async def test_update_user_full(db_session, client):
+    # Создаем админа и пользователя
+    user_repo = UserRepository(db_session)
+    admin_data = UserCreateInDB(
+        username="admin",
+        email="admin@example.com",
+        hashed_password=auth.get_password_hash("adminpass"),
+        roles=[UserRole.ADMIN],
+    )
+    await user_repo.create(admin_data)
+
+    user_data = UserCreateInDB(
+        username="user",
+        email="user@example.com",
+        hashed_password=auth.get_password_hash("userpass"),
+        roles=[UserRole.USER],
+    )
+    user = await user_repo.create(user_data)
+
+    # Логинимся как админ
+    login_data = {"username": "admin@example.com", "password": "adminpass"}
+    login_response = await client.post("/auth/login", data=login_data)
+    admin_token = login_response.json()["access_token"]
+
+    # Полностью обновляем пользователя
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    update_data = UserUpdateFull(
+        username="fullyupdateduser",
+        email="newuser@example.com",
+        is_active=True,
+        roles=[UserRole.USER, UserRole.MANAGER],
+    )
+    response = await client.put(
+        f"/api/users/{user.id}", headers=headers, json=update_data.model_dump()
+    )
+    assert response.status_code == 200
+    updated_user = response.json()
+    assert updated_user["username"] == "fullyupdateduser"
+    assert updated_user["email"] == "newuser@example.com"
+    assert updated_user["is_active"] is True
+    assert set(updated_user["roles"]) == {UserRole.USER.value, UserRole.MANAGER.value}

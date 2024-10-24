@@ -28,6 +28,7 @@ commitizen = "^3.29.1"
 mypy = "^1.12.1"
 types-passlib = "^1.7.7.20240819"
 types-python-jose = "^3.3.4.20240106"
+loguru = "^0.7.2"
 
 [tool.poetry.scripts]
 alembic = "alembic.config:main"
@@ -36,6 +37,7 @@ alembic = "alembic.config:main"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
 pytest-asyncio = "^0.24.0"
+ruff = "^0.7.1"
 
 
 [tool.commitizen]

@@ -2,7 +2,7 @@ from typing import Optional
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import jwt, JWTError
-import logging
+from loguru import logger
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -26,9 +26,9 @@ class Auth:
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         result = pwd_context.verify(plain_password, hashed_password)
-        logging.debug(f"Password verification result: {result}")
-        logging.debug(f"Plain password: {plain_password}")
-        logging.debug(f"Hashed password: {hashed_password}")
+        logger.debug(f"Password verification result: {result}")
+        logger.debug(f"Plain password: {plain_password}")
+        logger.debug(f"Hashed password: {hashed_password}")
         return result
 
     @staticmethod
@@ -89,9 +89,6 @@ class Auth:
 
 
 auth = Auth()
-
-
-logger = logging.getLogger(__name__)
 
 
 def get_current_user_with_roles(*required_roles: UserRole):
